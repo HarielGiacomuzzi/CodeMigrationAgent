@@ -83,6 +83,15 @@ def test_cyclic_plan_fails_in_planning():
     assert state.phase == Phase.FAILED and "planning failed" in state.errors[0]
 
 
+def test_step_with_no_files_sees_all_current_files():
+    # FakeLLM prefixes "# <step.id>" to every file it receives, so files touched by s2
+    # (which declares no files) prove s2 saw both a.py and b.py.
+    steps = [step("s1", files=["a.py"]), step("s2", ["s1"], files=[])]
+    state, _ = run(FakeLLM(steps=steps), files={"a.py": "a = 1\n", "b.py": "b = 1\n"})
+    assert state.migrated_files["a.py"].startswith("# s2")
+    assert state.migrated_files["b.py"].startswith("# s2")
+
+
 def test_bad_generated_code_fails_verification():
     state, _ = run(FakeLLM(bad_output=True))
     assert state.phase == Phase.DONE

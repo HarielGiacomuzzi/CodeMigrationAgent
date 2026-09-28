@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from agent.llm import LLMError
 from agent.state import MigrationState, StepStatus, Verification
 
 NODE_SUFFIXES = {".js", ".mjs", ".cjs"}
@@ -53,9 +54,14 @@ async def verify(state: MigrationState, llm) -> Verification:
     syntax = await asyncio.to_thread(
         lambda: {path: check_syntax(path, content) for path, content in state.migrated_files.items()}
     )
-    review = await llm.review(state.migrated_files, state.source_framework, state.target_framework)
     syntax_issues = [f"{path}: {result}" for path, result in syntax.items() if result.startswith("error")]
     incomplete = [step.id for step in state.plan if step.status != StepStatus.COMPLETED]
-    issues = syntax_issues + ([f"steps not completed: {', '.join(incomplete)}"] if incomplete else []) + review.issues
+    incomplete_issue = [f"steps not completed: {', '.join(incomplete)}"] if incomplete else []
+    try:
+        review = await llm.review(state.migrated_files, state.source_framework, state.target_framework)
+    except LLMError as exc:
+        return Verification(False, syntax, syntax_issues + incomplete_issue + [f"review failed: {exc}"],
+                             "Automated review failed; syntax results only.")
+    issues = syntax_issues + incomplete_issue + review.issues
     passed = not syntax_issues and not incomplete and review.passed
     return Verification(passed, syntax, issues, review.summary)

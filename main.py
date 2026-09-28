@@ -15,6 +15,7 @@ from agent.workflow import run_migration
 
 MAX_FILES = 50
 MAX_TOTAL_CHARS = 500_000
+KEEPALIVE_SECONDS = 15
 
 app = FastAPI(title="Code Migration Agent")
 
@@ -70,14 +71,24 @@ async def migrate_stream(request: MigrateRequest, llm: ClaudeLLM = Depends(get_l
         task = asyncio.create_task(run_migration(new_state(request), llm, queue.put))
         try:
             while True:
-                event = await queue.get()
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=KEEPALIVE_SECONDS)
+                except asyncio.TimeoutError:
+                    if task.done():  # background task died without emitting a result
+                        break
+                    yield ": ping\n\n"
+                    continue
                 yield f"data: {json.dumps(event)}\n\n"
                 if event["type"] == "result":
                     break
         finally:
             task.cancel()  # client disconnected mid-run; no-op when already finished
 
-    return StreamingResponse(events(), media_type="text/event-stream")
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 # Serve the web UI last so the API routes above take precedence.

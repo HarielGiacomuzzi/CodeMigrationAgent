@@ -59,7 +59,7 @@ Open http://localhost:8000. The form is prefilled with a small Flask app. Pick t
 
 ### Limits
 
-Each request accepts up to 50 files and 500,000 characters in total. Paths must be relative and cannot contain `..`. Source and target frameworks must differ. Each Claude response is capped at 16,000 tokens. A step whose output would exceed that fails with a `max_tokens` error, so migrate large projects in smaller batches.
+Each request accepts up to 50 files and 500,000 characters in total. Paths must be relative and cannot contain `..`. Source and target frameworks must differ. Each Claude response is capped at 16,000 tokens. A step whose output would exceed that fails with a `max_tokens` error, so migrate large projects in smaller batches. Claude Opus 5 thinks by default, and that thinking counts toward the same 16,000-token cap, so a single very large file can hit the cap even before its migrated content is written — split it.
 
 ## API
 
@@ -102,7 +102,7 @@ curl -s localhost:8000/migrate -H 'content-type: application/json' \
 
 ### `POST /migrate/stream`
 
-Same request body. It responds with `text/event-stream`, one `data: <json>` event per state change:
+Same request body. It responds with `text/event-stream`, one `data: <json>` event per state change. Every 15s without a real event, the stream sends a `: ping` comment to keep proxies from timing out or buffering the connection.
 
 | `type` | Payload | When |
 |---|---|---|
@@ -139,6 +139,7 @@ CLI alternative: `npm i -g @railway/cli && railway login && railway init && rail
 - Migrated code is **never executed**. Verification only parses it (`compile()`, `json.loads`, `node --check`).
 - The UI inserts all code and model output as text, never as HTML.
 - Paths are validated even though nothing is written to disk.
+- The deployed endpoint is unauthenticated and spends the operator's Anthropic credits; one max-size request can cost several dollars. Put it behind auth or a private URL for anything beyond a demo, and set a spend limit in the Anthropic Console.
 
 ## Not implemented (extension challenges)
 

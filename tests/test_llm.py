@@ -59,7 +59,12 @@ def test_execute_step_prompt_names_the_step():
 
 @pytest.mark.parametrize(
     ("stop_reason", "parsed", "message"),
-    [("refusal", ANALYSIS, "declined"), ("max_tokens", ANALYSIS, "max_tokens"), ("end_turn", None, "no structured output")],
+    [
+        ("refusal", ANALYSIS, "declined"),
+        ("max_tokens", ANALYSIS, "max_tokens"),
+        ("model_context_window_exceeded", ANALYSIS, "context window"),
+        ("end_turn", None, "no structured output"),
+    ],
 )
 def test_unusable_responses_raise_llm_error(stop_reason, parsed, message):
     llm, _ = make_llm(stop_reason=stop_reason, parsed=parsed)

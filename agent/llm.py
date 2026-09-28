@@ -77,6 +77,8 @@ class ClaudeLLM:
             raise LLMError("model declined the request")
         if response.stop_reason == "max_tokens":
             raise LLMError(f"response hit max_tokens ({MAX_TOKENS}); migrate fewer or smaller files at once")
+        if response.stop_reason == "model_context_window_exceeded":
+            raise LLMError("input is too large for the model's context window; migrate fewer or smaller files at once")
         if response.parsed_output is None:
             raise LLMError("model returned no structured output")
         return response.parsed_output

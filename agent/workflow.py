@@ -80,7 +80,7 @@ async def _execute_step(state: MigrationState, step: PlanStep, llm, context: str
         return
     step.status = StepStatus.IN_PROGRESS
     await emit({"type": "step", "step": asdict(step)})
-    files = {p: state.current_file(p) for p in step.files} if step.files else dict(state.migrated_files or state.source_files)
+    files = {p: state.current_file(p) for p in step.files} if step.files else {**state.source_files, **state.migrated_files}
     try:
         result = await llm.execute_step(step, files, state.source_framework, state.target_framework, context)
         for change in result.files:

@@ -1,3 +1,4 @@
+import asyncio
 import json
 
 import pytest
@@ -7,6 +8,14 @@ import main
 from tests.fakes import SOURCE, FakeLLM
 
 PAYLOAD = {"files": SOURCE, "source_framework": "flask", "target_framework": "fastapi"}
+
+
+class SlowAnalyzeLLM(FakeLLM):
+    """Delays analyze() so a keepalive tick fires before the next real event."""
+
+    async def analyze(self, files, source, target):
+        await asyncio.sleep(0.05)
+        return await super().analyze(files, source, target)
 
 
 @pytest.fixture
@@ -70,3 +79,20 @@ def test_stream_emits_phase_events_then_result(use_llm):
     assert phases == ["analysis", "planning", "execution", "verification", "done"]
     assert {e["type"] for e in events} >= {"analysis", "plan", "step"}
     assert events[-1]["type"] == "result" and events[-1]["result"]["success"] is True
+
+
+def test_stream_headers_disable_caching_and_proxy_buffering(use_llm):
+    with use_llm(FakeLLM()).stream("POST", "/migrate/stream", json=PAYLOAD) as response:
+        assert response.headers["cache-control"] == "no-cache"
+        assert response.headers["x-accel-buffering"] == "no"
+        for _ in response.iter_lines():
+            pass
+
+
+def test_stream_sends_keepalive_ping_when_llm_is_slow(use_llm, monkeypatch):
+    monkeypatch.setattr(main, "KEEPALIVE_SECONDS", 0.01)
+    with use_llm(SlowAnalyzeLLM()).stream("POST", "/migrate/stream", json=PAYLOAD) as response:
+        raw = response.read().decode()
+    assert ": ping" in raw
+    lines = [line for line in raw.splitlines() if line.startswith("data: ")]
+    assert json.loads(lines[-1][6:])["type"] == "result"

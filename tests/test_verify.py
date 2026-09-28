@@ -3,9 +3,15 @@ import shutil
 
 import pytest
 
+from agent.llm import LLMError
 from agent.state import MigrationState, PlanStep, StepStatus
 from agent.verify import check_syntax, verify
 from tests.fakes import FakeLLM
+
+
+class ReviewFailsLLM(FakeLLM):
+    async def review(self, files, source, target):
+        raise LLMError("boom")
 
 
 def test_python_ok_and_error_with_line_number():
@@ -65,3 +71,10 @@ def test_verify_fails_when_a_step_did_not_complete():
 def test_verify_fails_with_nothing_migrated():
     result = asyncio.run(verify(make_state({}), FakeLLM()))
     assert not result.passed and result.issues == ["no files were migrated"]
+
+
+def test_verify_keeps_syntax_results_when_review_call_fails():
+    result = asyncio.run(verify(make_state({"app.py": "y = 2\n"}), ReviewFailsLLM()))
+    assert result.passed is False
+    assert result.syntax == {"app.py": "ok"}
+    assert "review failed: boom" in result.issues
