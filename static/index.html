@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Code Migration Agent</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Code Migration Agent</h1>
+    <p>Analyze → Plan → Execute → Verify</p>
+  </header>
+  <main class="layout">
+    <section class="panel" id="input-panel">
+      <h2>Source</h2>
+      <form id="migrate-form">
+        <div class="frameworks">
+          <label>From <input id="source-framework" list="frameworks" required placeholder="e.g. flask"></label>
+          <label>To <input id="target-framework" list="frameworks" required placeholder="e.g. fastapi"></label>
+          <datalist id="frameworks">
+            <option value="flask"></option><option value="fastapi"></option><option value="django"></option>
+            <option value="express"></option><option value="hono"></option>
+            <option value="react class components"></option><option value="react hooks"></option>
+            <option value="vue 2"></option><option value="vue 3"></option>
+            <option value="jquery"></option><option value="vanilla js"></option>
+            <option value="unittest"></option><option value="pytest"></option>
+          </datalist>
+        </div>
+        <div id="files"></div>
+        <div class="file-actions">
+          <button type="button" id="add-file">+ Add file</button>
+          <label class="button">Upload files<input type="file" id="upload" multiple hidden></label>
+        </div>
+        <button type="submit" id="run" class="primary">Migrate</button>
+      </form>
+    </section>
+
+    <section class="panel" id="progress-panel">
+      <h2>Progress</h2>
+      <ol id="phases">
+        <li data-phase="analysis">Analysis</li>
+        <li data-phase="planning">Planning</li>
+        <li data-phase="execution">Execution</li>
+        <li data-phase="verification">Verification</li>
+      </ol>
+      <p id="status" role="status" aria-live="polite">Idle</p>
+      <div id="analysis"></div>
+      <h3>Plan</h3>
+      <div class="scroll">
+        <table id="plan">
+          <thead><tr><th>Step</th><th>Description</th><th>Depends on</th><th>Complexity</th><th>Status</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel wide" id="output-panel">
+      <h2>Output</h2>
+      <div id="verification"></div>
+      <ul id="errors"></ul>
+      <div id="file-tabs" role="tablist"></div>
+      <div class="view-toggle">
+        <label><input type="radio" name="view" value="diff" checked> Diff</label>
+        <label><input type="radio" name="view" value="code"> Migrated code</label>
+      </div>
+      <pre id="output"></pre>
+    </section>
+  </main>
+
+  <template id="file-template">
+    <div class="file">
+      <div class="file-head">
+        <input class="path" placeholder="path/to/file.py" aria-label="File path">
+        <button type="button" class="remove" aria-label="Remove file">×</button>
+      </div>
+      <textarea class="content" rows="10" spellcheck="false" placeholder="Paste source code" aria-label="File content"></textarea>
+    </div>
+  </template>
+  <script src="app.js"></script>
+</body>
+</html>

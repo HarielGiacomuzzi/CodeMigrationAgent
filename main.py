@@ -2,10 +2,11 @@
 import asyncio
 import json
 from functools import cache
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 
 from fastapi import Depends, FastAPI
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from agent.llm import ClaudeLLM
@@ -77,3 +78,7 @@ async def migrate_stream(request: MigrateRequest, llm: ClaudeLLM = Depends(get_l
             task.cancel()  # client disconnected mid-run; no-op when already finished
 
     return StreamingResponse(events(), media_type="text/event-stream")
+
+
+# Serve the web UI last so the API routes above take precedence.
+app.mount("/", StaticFiles(directory=Path(__file__).parent / "static", html=True), name="static")
